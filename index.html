@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>MunchMaar</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#fff7ed;--card:#fff;--tx:#1f2937;--mut:#6b7280;--ac:#ea580c;--ac2:#16a34a;--bd:#fed7aa;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media(prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#1c1917;--card:#292524;--tx:#f5f5f4;--mut:#a8a29e;--bd:#44403c}}
+:root[data-theme="dark"]{--bg:#1c1917;--card:#292524;--tx:#f5f5f4;--mut:#a8a29e;--bd:#44403c}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--tx);font-family:system-ui,-apple-system,Segoe UI,sans-serif}
+.app{max-width:440px;margin:0 auto;padding:20px 16px 90px;min-height:100vh}
+h1{font-size:24px;margin:8px 0}
+.mut{color:var(--mut);font-size:14px}
+.card{background:var(--card);border:1px solid var(--bd);border-radius:16px;padding:16px;margin:12px 0}
+input{width:100%;padding:14px;font-size:18px;border-radius:12px;border:2px solid var(--bd);background:var(--bg);color:var(--tx);text-align:center;letter-spacing:2px}
+button{font:inherit;cursor:pointer;border:0;border-radius:12px;padding:14px 18px;font-weight:600}
+.pri{background:var(--ac);color:#fff;width:100%;margin-top:14px}
+.pri:disabled{opacity:.4}
+.ghost{background:transparent;color:var(--ac);padding:8px 0}
+.row{display:flex;align-items:center;justify-content:space-between;gap:10px}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+.candy{text-align:center}
+.candy .em{font-size:52px}
+.add{background:var(--ac2);color:#fff;width:100%;margin-top:8px}
+.qty{display:flex;align-items:center;gap:10px}
+.qty button{width:34px;height:34px;padding:0;background:var(--bd);color:var(--tx);font-size:18px}
+.bar{position:fixed;left:0;right:0;bottom:0;padding:12px 16px calc(12px + env(safe-area-inset-bottom,0px));background:var(--card);border-top:1px solid var(--bd)}
+.bar .in{max-width:440px;margin:0 auto}
+.total{font-size:20px;font-weight:700}
+#qr{display:flex;justify-content:center;padding:16px;background:#fff;border-radius:12px;margin-top:12px}
+.hide{display:none}
+@keyframes bob{0%,100%{transform:translateY(0)}50%{transform:translateY(-10px)}}
+</style>
+</head>
+<body>
+<div class="app">
+
+<!-- PAGE 1: HOME -->
+<section id="home">
+  <div style="font-size:64px;text-align:center">🍬🍫</div>
+  <h1 style="text-align:center;font-size:34px;margin-bottom:0">MunchMaar</h1>
+  <p style="text-align:center;font-weight:700;color:var(--ac);margin:4px 0 6px">Tap. Pay. Khaao.</p>
+  <p class="mut" style="text-align:center">Connect to your vending machine</p>
+  <div class="card">
+    <label class="mut">Machine serial number</label>
+    <input id="serial" placeholder="e.g. VM-1024" autocomplete="off">
+    <button class="pri" id="connect" disabled>Connect</button>
+  </div>
+</section>
+
+<!-- PAGE 2: SELECT -->
+<section id="shop" class="hide">
+  <div class="row"><h1>Pick your treat</h1><button class="ghost" id="disc">Disconnect</button></div>
+  <p class="mut">Connected: <b id="ser"></b></p>
+  <div class="grid">
+    <div class="card candy"><div class="em">🍬</div><b>Candy</b><div class="mut">₹10</div><div class="qty" style="justify-content:center;margin-top:8px"><button class="step" data-d="-1" data-i="c10">−</button><b id="q_c10" style="min-width:24px">0</b><button class="step" data-d="1" data-i="c10">+</button></div></div>
+    <div class="card candy"><div class="em">🍫</div><b>Chocolate</b><div class="mut">₹15</div><div class="qty" style="justify-content:center;margin-top:8px"><button class="step" data-d="-1" data-i="c15">−</button><b id="q_c15" style="min-width:24px">0</b><button class="step" data-d="1" data-i="c15">+</button></div></div>
+  </div>
+  <div class="bar"><div class="in row"><span><b id="cnt">0</b> items · ₹<b id="sub">0</b></span><button class="add" style="width:auto;background:var(--ac)" id="tocart">View cart →</button></div></div>
+</section>
+
+<!-- PAGE 3: CART -->
+<section id="cart" class="hide">
+  <button class="ghost" id="back">← Add more</button>
+  <h1>Your cart</h1>
+  <div class="card" id="lines"></div>
+  <div class="card">
+    <div class="mut" id="calc"></div>
+    <div class="row total"><span id="ci"></span><span id="ct"></span></div>
+  </div>
+  <button class="pri" id="pay">Pay with QR</button>
+</section>
+
+<!-- PAGE 4: PAY -->
+<section id="pay4" class="hide">
+  <button class="ghost" id="backc">← Back to cart</button>
+  <h1>Pay with QR</h1>
+  <div class="card" style="text-align:center">
+    <div class="mut" id="qsum"></div>
+    <b style="font-size:22px">Scan to pay ₹<span id="qa"></span></b>
+    <div id="qr"></div>
+    <p class="mut">Machine <span id="qs"></span> will dispense after payment.</p>
+  </div>
+  <button class="pri" id="paid">I've paid ✓</button>
+</section>
+
+<!-- PAGE 5: DISPENSING -->
+<section id="disp" class="hide" style="text-align:center;padding-top:40px">
+  <div id="dem" style="font-size:80px;animation:bob 1s infinite">🍬</div>
+  <h1>Dispensing…</h1>
+  <p class="mut">Please collect from the tray below</p>
+  <div class="total" style="margin:16px 0"><span id="dn">0</span> of <span id="dt">0</span> dispensed</div>
+  <div style="height:12px;background:var(--bd);border-radius:8px;overflow:hidden"><div id="dbar" style="height:100%;width:0;background:var(--ac2);transition:width .5s"></div></div>
+  <p class="mut" id="dnow" style="margin-top:14px"></p>
+</section>
+
+<!-- PAGE 6: DONE -->
+<section id="done" class="hide" style="text-align:center;padding-top:50px">
+  <div style="font-size:72px">✅</div>
+  <h1>Items dispensed successfully!</h1>
+  <p style="font-size:18px">Thank you for choosing MunchMaar.<br>Enjoy! 🍬🍫</p>
+  <p style="font-weight:700;color:var(--ac)">Tap. Pay. Khaao.</p>
+  <button class="pri" id="again">Order again</button>
+</section>
+
+</div>
+<script>
+var items=[{id:'c10',name:'Candy',emoji:'🍬',price:10},{id:'c15',name:'Chocolate',emoji:'🍫',price:15}];
+var qty={c10:0,c15:0},serial='',qrObj=null;
+var $=function(i){return document.getElementById(i)};
+function show(p){['home','shop','cart','pay4','disp','done'].forEach(function(s){$(s).classList.toggle('hide',s!==p)});window.scrollTo(0,0)}
+function totals(){var n=0,t=0;items.forEach(function(i){n+=qty[i.id];t+=qty[i.id]*i.price});return{n:n,t:t}}
+function refresh(){items.forEach(function(i){$('q_'+i.id).textContent=qty[i.id]});var s=totals();$('cnt').textContent=s.n;$('sub').textContent=s.t}
+$('serial').oninput=function(){$('connect').disabled=this.value.trim().length<3};
+$('connect').onclick=function(){serial=$('serial').value.trim().toUpperCase();$('ser').textContent=serial;show('shop')};
+$('disc').onclick=function(){qty={c10:0,c15:0};refresh();show('home')};
+document.querySelectorAll('.step').forEach(function(b){b.onclick=function(){qty[b.dataset.i]=Math.max(0,qty[b.dataset.i]+ +b.dataset.d);refresh()}});
+$('tocart').onclick=function(){renderCart();show('cart')};
+$('back').onclick=function(){show('shop')};
+$('backc').onclick=function(){show('cart')};
+function renderCart(){
+  var h='',parts=[];
+  items.forEach(function(i){
+    for(var k=0;k<qty[i.id];k++)parts.push(i.price);
+    if(qty[i.id]>0)h+='<div class="row" style="margin:8px 0"><span>'+qty[i.id]+' × '+i.emoji+' ₹'+i.price+' '+i.name.toLowerCase()+'</span><span class="qty"><button data-d="-1" data-i="'+i.id+'">−</button><b>'+qty[i.id]+'</b><button data-d="1" data-i="'+i.id+'">+</button></span></div>';
+  });
+  var s=totals();
+  $('lines').innerHTML=h||'<p class="mut">Cart is empty.</p>';
+  $('calc').textContent=parts.length?parts.join(' + ')+' = ₹'+s.t:'';
+  $('ci').textContent='Total ('+s.n+' items)';$('ct').textContent='₹'+s.t;
+  $('pay').disabled=!s.n;
+  document.querySelectorAll('.qty button').forEach(function(b){b.onclick=function(){qty[b.dataset.i]=Math.max(0,qty[b.dataset.i]+ +b.dataset.d);refresh();renderCart()}});
+}
+$('pay').onclick=function(){
+  var s=totals();
+  var upi='upi://pay?pa=vendingmachine@upi&pn=MunchMaar&am='+s.t+'&cu=INR&tn='+encodeURIComponent('Machine '+serial);
+  $('qa').textContent=s.t;$('qs').textContent=serial;
+  $('qsum').textContent=totals().n+' items';show('pay4');
+  $('qr').innerHTML='';
+  try{qrObj=new QRCode($('qr'),{text:upi,width:200,height:200})}catch(e){$('qr').textContent=upi}
+};
+$('paid').onclick=function(){
+  var list=[];items.forEach(function(i){for(var k=0;k<qty[i.id];k++)list.push(i)});
+  var n=0,t=list.length;
+  $('dt').textContent=t;$('dn').textContent=0;$('dbar').style.width='0';$('dnow').textContent='';
+  show('disp');
+  var iv=setInterval(function(){
+    var it=list[n];n++;
+    $('dn').textContent=n;$('dbar').style.width=(n/t*100)+'%';
+    $('dem').textContent=it.emoji;$('dnow').textContent=it.name+' dispensed ('+n+'/'+t+')';
+    if(n>=t){clearInterval(iv);setTimeout(function(){show('done')},1200)}
+  },1500);
+};
+$('again').onclick=function(){qty={c10:0,c15:0};refresh();show('shop')};
+</script>
+</body>
+</html>
