@@ -142,17 +142,29 @@ $('pay').onclick=function(){
   $('qr').innerHTML='';
   try{qrObj=new QRCode($('qr'),{text:upi,width:200,height:200})}catch(e){$('qr').textContent=upi}
 };
+var DB='https://YOUR-PROJECT-default-rtdb.firebaseio.com';
 $('paid').onclick=function(){
-  var list=[];items.forEach(function(i){for(var k=0;k<qty[i.id];k++)list.push(i)});
-  var n=0,t=list.length;
-  $('dt').textContent=t;$('dn').textContent=0;$('dbar').style.width='0';$('dnow').textContent='';
-  show('disp');
-  var iv=setInterval(function(){
-    var it=list[n];n++;
-    $('dn').textContent=n;$('dbar').style.width=(n/t*100)+'%';
-    $('dem').textContent=it.emoji;$('dnow').textContent=it.name+' dispensed ('+n+'/'+t+')';
-    if(n>=t){clearInterval(iv);setTimeout(function(){show('done')},1200)}
-  },1500);
+  var s=totals(),tot=s.n;
+  $('paid').disabled=true;
+  fetch(DB+'/machines/'+serial+'/order.json',{method:'PUT',
+    body:JSON.stringify({c10:qty.c10,c15:qty.c15,total:s.t,count:tot,dispensed:0,status:'paid',ts:Date.now()})})
+  .then(function(r){
+    if(!r.ok)throw 0;
+    $('dt').textContent=tot;$('dn').textContent=0;$('dbar').style.width='0';
+    $('dnow').textContent='Waiting for machine…';$('dem').textContent='🍬';
+    show('disp');
+    var iv=setInterval(function(){
+      fetch(DB+'/machines/'+serial+'/order.json').then(function(r){return r.json()}).then(function(o){
+        if(!o)return;
+        $('dn').textContent=o.dispensed;
+        $('dbar').style.width=(o.dispensed/tot*100)+'%';
+        if(o.dispensed>0)$('dnow').textContent=o.dispensed+' of '+tot+' dispensed';
+        if(o.status==='done'){clearInterval(iv);setTimeout(function(){show('done')},1000)}
+      }).catch(function(){});
+    },1000);
+  })
+  .catch(function(){alert('Could not reach the machine. Check internet and try again.')})
+  .finally(function(){$('paid').disabled=false});
 };
 $('again').onclick=function(){qty={c10:0,c15:0};refresh();show('shop')};
 </script>
